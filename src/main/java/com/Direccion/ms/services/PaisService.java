@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.Direccion.ms.models.dto.PaisDTO;
 import com.Direccion.ms.models.entities.Pais;
 import com.Direccion.ms.models.request.ActualizarPais;
 import com.Direccion.ms.models.request.AgregarPais;
@@ -21,33 +22,41 @@ public class PaisService {
     @Autowired
     private PaisRepository paisRepository;
 
-    //* Retorna la lista completa de países registrados en la BD
-    public List<Pais> obtenerTodosLosPaises() {
-        return paisRepository.findAll();
+    //* Convierte una entidad Pais a su DTO de respuesta
+    private PaisDTO toDTO(Pais p) {
+        return new PaisDTO(p.getId_pais(), p.getNombre_pais());
     }
 
-    //* Busca un país por su ID
+    //* Retorna la lista completa de países como DTOs
+    public List<PaisDTO> obtenerTodosLosPaises() {
+        return paisRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    //* Busca un país por su ID y retorna el DTO
     //! Lanza HTTP 404 si el ID no existe en la BD
-    public Pais obtenerPaisPorId(int id_pais) {
-        return paisRepository.findById(id_pais)
+    public PaisDTO obtenerPaisPorId(int id_pais) {
+        Pais pais = paisRepository.findById(id_pais)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "País no encontrado."));
+        return toDTO(pais);
     }
 
-    //* Crea un nuevo país a partir del DTO y lo persiste en la BD
-    public Pais agregarPais(AgregarPais nuevoPais) {
+    //* Crea un nuevo país y retorna el DTO de respuesta
+    public PaisDTO agregarPais(AgregarPais nuevoPais) {
         Pais pais = new Pais();
         pais.setNombre_pais(nuevoPais.getNombre_pais());
-        return paisRepository.save(pais);
+        return toDTO(paisRepository.save(pais));
     }
 
-    //* Actualiza los datos de un país existente
+    //* Actualiza los datos de un país y retorna el DTO de respuesta
     //? id_pais viene del path de la URL, no del body del request
-    //? save() detecta que el ID ya existe en la BD y ejecuta UPDATE en lugar de INSERT
-    public Pais actualizarPais(int id_pais, ActualizarPais actPais) {
+    public PaisDTO actualizarPais(int id_pais, ActualizarPais actPais) {
         Pais pais = paisRepository.findById(id_pais)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "País no encontrado."));
         pais.setNombre_pais(actPais.getNombre_pais());
-        return paisRepository.save(pais);
+        return toDTO(paisRepository.save(pais));
     }
 
     //* Elimina un país por su ID

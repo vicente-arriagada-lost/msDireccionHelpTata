@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.Direccion.ms.models.entities.Region;
+import com.Direccion.ms.models.dto.RegionDTO;
 import com.Direccion.ms.models.request.ActualizarRegion;
 import com.Direccion.ms.models.request.AgregarRegion;
 import com.Direccion.ms.services.RegionService;
@@ -25,41 +25,41 @@ public class RegionController {
     @Autowired
     private RegionService regionService;
 
-    //* GET /api/regiones — retorna todas las regiones
+    //* GET /api/regiones — retorna todas las regiones como RegionDTO (con id_pais en vez del objeto Pais)
     @GetMapping
-    public ResponseEntity<List<Region>> obtenerTodas() {
+    public ResponseEntity<List<RegionDTO>> obtenerTodas() {
         return ResponseEntity.ok(regionService.obtenerTodasLasRegiones());
     }
 
-    //* GET /api/regiones/{id} — retorna una región por su ID
+    //* GET /api/regiones/{id} — retorna una región por su ID como RegionDTO
     //? @PathVariable extrae el valor {id} de la URL
     @GetMapping("/{id}")
-    public ResponseEntity<Region> obtenerPorId(@PathVariable int id) {
+    public ResponseEntity<RegionDTO> obtenerPorId(@PathVariable int id) {
         return ResponseEntity.ok(regionService.obtenerRegionPorId(id));
     }
 
-    //* GET /api/regiones/pais/{idPais} — retorna todas las regiones de un país
-    //? Endpoint en cascada: útil para poblar un select de regiones al elegir un país en el frontend
+    //* GET /api/regiones/pais/{idPais} — retorna todas las regiones de un país como DTOs
+    //? Endpoint en cascada: útil para poblar un select de regiones al elegir un país
     @GetMapping("/pais/{idPais}")
-    public ResponseEntity<List<Region>> obtenerPorPais(@PathVariable int idPais) {
+    public ResponseEntity<List<RegionDTO>> obtenerPorPais(@PathVariable int idPais) {
         return ResponseEntity.ok(regionService.obtenerRegionesPorPais(idPais));
     }
 
-    //* POST /api/regiones — crea una nueva región
-    //? @Valid activa las validaciones del DTO (ej: @NotBlank, @Positive)
+    //* POST /api/regiones — crea una nueva región y retorna el RegionDTO creado
+    //? @Valid activa las validaciones del DTO de entrada (ej: @NotBlank, @Positive)
     //? @RequestBody deserializa el JSON del request al DTO
     //! Responde con HTTP 201 Created en lugar del 200 por defecto
     @PostMapping
-    public ResponseEntity<Region> agregar(@Valid @RequestBody AgregarRegion nuevaRegion) {
+    public ResponseEntity<RegionDTO> agregar(@Valid @RequestBody AgregarRegion nuevaRegion) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(regionService.agregarRegion(nuevaRegion));
     }
 
-    //* PUT /api/regiones/{id} — actualiza los datos de una región existente
+    //* PUT /api/regiones/{id} — actualiza los datos de una región y retorna el RegionDTO
     //? El ID viene en el path y los nuevos datos vienen en el body
     @PutMapping("/{id}")
-    public ResponseEntity<Region> actualizar(@PathVariable int id,
-                                             @Valid @RequestBody ActualizarRegion actRegion) {
+    public ResponseEntity<RegionDTO> actualizar(@PathVariable int id,
+                                                @Valid @RequestBody ActualizarRegion actRegion) {
         return ResponseEntity.ok(regionService.actualizarRegion(id, actRegion));
     }
 

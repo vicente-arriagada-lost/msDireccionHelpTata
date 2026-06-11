@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.Direccion.ms.models.dto.DireccionDTO;
 import com.Direccion.ms.models.entities.Comuna;
 import com.Direccion.ms.models.entities.Direccion;
 import com.Direccion.ms.models.request.ActualizarDireccion;
@@ -17,7 +18,7 @@ import com.Direccion.ms.repositories.DireccionRepository;
 //* Servicio que encapsula toda la lógica de negocio relacionada a direcciones
 //* Es el punto de integración principal con el MS Usuario:
 //*   - El MS Usuario llama POST /api/direcciones para crear el domicilio de un usuario
-//*   - El MS Usuario llama GET /api/direcciones/{id} para obtener el domicilio completo
+//*   - El MS Usuario llama GET /api/direcciones/{id} para validar que la dirección existe
 //? @Service marca esta clase para que Spring la detecte e inyecte donde se necesite
 @Service
 public class DireccionService {
@@ -30,28 +31,41 @@ public class DireccionService {
     @Autowired
     private ComunaRepository comunaRepository;
 
-    //* Retorna la lista completa de direcciones registradas en la BD
-    public List<Direccion> obtenerTodasLasDirecciones() {
-        return direccionRepository.findAll();
+    //* Convierte una entidad Direccion a su DTO de respuesta
+    // La entidad tiene un objeto Comuna completo anidado (y dentro tiene Ciudad -> Region -> Pais).
+    // Con el DTO solo se expone el id_comuna, evitando el JSON profundamente anidado.
+    private DireccionDTO toDTO(Direccion d) {
+        return new DireccionDTO(d.getId_direccion(), d.getCalle(), d.getNumero(), d.getComuna().getId_comuna());
     }
 
-    //* Retorna todas las direcciones que pertenecen a una comuna dada
-    public List<Direccion> obtenerDireccionesPorComuna(int idComuna) {
-        return direccionRepository.findByComuna_IdComuna(idComuna);
+    //* Retorna la lista completa de direcciones como DTOs
+    public List<DireccionDTO> obtenerTodasLasDirecciones() {
+        return direccionRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
-    //* Busca una dirección por su ID — endpoint principal consumido por el MS Usuario
+    //* Retorna todas las direcciones de una comuna dada como DTOs
+    public List<DireccionDTO> obtenerDireccionesPorComuna(int idComuna) {
+        return direccionRepository.findByComuna_IdComuna(idComuna)
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    //* Busca una dirección por su ID y retorna el DTO
     //! Lanza HTTP 404 si el ID no existe en la BD
-    //? La respuesta incluye el objeto Comuna completo con Ciudad, Región y País anidados
-    public Direccion obtenerDireccionPorId(int id_direccion) {
-        return direccionRepository.findById(id_direccion)
+    public DireccionDTO obtenerDireccionPorId(int id_direccion) {
+        Direccion direccion = direccionRepository.findById(id_direccion)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dirección no encontrada."));
+        return toDTO(direccion);
     }
 
-    //* Crea una nueva dirección a partir del DTO y la persiste en la BD
+    //* Crea una nueva dirección y retorna el DTO de respuesta
     //! Lanza HTTP 404 si la comuna referenciada (id_comuna) no existe — integridad garantizada
-    //? El id_direccion generado es el que el MS Usuario debe guardar en su tabla de usuarios
-    public Direccion agregarDireccion(AgregarDireccion nuevaDireccion) {
+    //? El id_direccion del DTO retornado es el que el MS Usuario debe guardar en su tabla
+    public DireccionDTO agregarDireccion(AgregarDireccion nuevaDireccion) {
         Comuna comuna = comunaRepository.findById(nuevaDireccion.getId_comuna())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comuna no encontrada."));
         Direccion direccion = new Direccion();
@@ -59,13 +73,12 @@ public class DireccionService {
         direccion.setNumero(nuevaDireccion.getNumero());
         //* Se asigna el objeto Comuna completo para que JPA gestione la FK
         direccion.setComuna(comuna);
-        return direccionRepository.save(direccion);
+        return toDTO(direccionRepository.save(direccion));
     }
 
-    //* Actualiza los datos de una dirección existente
+    //* Actualiza los datos de una dirección y retorna el DTO de respuesta
     //? id_direccion viene del path de la URL, no del body del request
-    //? save() detecta que el ID ya existe en la BD y ejecuta UPDATE en lugar de INSERT
-    public Direccion actualizarDireccion(int id_direccion, ActualizarDireccion actDireccion) {
+    public DireccionDTO actualizarDireccion(int id_direccion, ActualizarDireccion actDireccion) {
         Direccion direccion = direccionRepository.findById(id_direccion)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dirección no encontrada."));
         Comuna comuna = comunaRepository.findById(actDireccion.getId_comuna())
@@ -73,7 +86,7 @@ public class DireccionService {
         direccion.setCalle(actDireccion.getCalle());
         direccion.setNumero(actDireccion.getNumero());
         direccion.setComuna(comuna);
-        return direccionRepository.save(direccion);
+        return toDTO(direccionRepository.save(direccion));
     }
 
     //* Elimina una dirección por su ID

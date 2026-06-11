@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.Direccion.ms.models.dto.CiudadDTO;
 import com.Direccion.ms.models.entities.Ciudad;
 import com.Direccion.ms.models.entities.Region;
 import com.Direccion.ms.models.request.ActualizarCiudad;
@@ -27,47 +28,59 @@ public class CiudadService {
     @Autowired
     private RegionRepository regionRepository;
 
-    //* Retorna la lista completa de ciudades registradas en la BD
-    public List<Ciudad> obtenerTodasLasCiudades() {
-        return ciudadRepository.findAll();
+    //* Convierte una entidad Ciudad a su DTO de respuesta
+    // En vez de incluir el objeto Region completo, solo se expone su ID (id_region)
+    private CiudadDTO toDTO(Ciudad c) {
+        return new CiudadDTO(c.getId_ciudad(), c.getNombre_ciudad(), c.getRegion().getId_region());
     }
 
-    //* Retorna todas las ciudades que pertenecen a una región dada
+    //* Retorna la lista completa de ciudades como DTOs
+    public List<CiudadDTO> obtenerTodasLasCiudades() {
+        return ciudadRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    //* Retorna todas las ciudades que pertenecen a una región dada como DTOs
     //? Útil para poblar selects en cascada: al seleccionar una región, se cargan sus ciudades
-    public List<Ciudad> obtenerCiudadesPorRegion(int idRegion) {
-        return ciudadRepository.findByRegion_IdRegion(idRegion);
+    public List<CiudadDTO> obtenerCiudadesPorRegion(int idRegion) {
+        return ciudadRepository.findByRegion_IdRegion(idRegion)
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
-    //* Busca una ciudad por su ID
+    //* Busca una ciudad por su ID y retorna el DTO
     //! Lanza HTTP 404 si el ID no existe en la BD
-    public Ciudad obtenerCiudadPorId(int id_ciudad) {
-        return ciudadRepository.findById(id_ciudad)
+    public CiudadDTO obtenerCiudadPorId(int id_ciudad) {
+        Ciudad ciudad = ciudadRepository.findById(id_ciudad)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ciudad no encontrada."));
+        return toDTO(ciudad);
     }
 
-    //* Crea una nueva ciudad a partir del DTO y la persiste en la BD
+    //* Crea una nueva ciudad y retorna el DTO de respuesta
     //! Lanza HTTP 404 si la región referenciada (id_region) no existe — integridad garantizada
-    public Ciudad agregarCiudad(AgregarCiudad nuevaCiudad) {
+    public CiudadDTO agregarCiudad(AgregarCiudad nuevaCiudad) {
         Region region = regionRepository.findById(nuevaCiudad.getId_region())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Región no encontrada."));
         Ciudad ciudad = new Ciudad();
         ciudad.setNombre_ciudad(nuevaCiudad.getNombre_ciudad());
         //* Se asigna el objeto Region completo para que JPA gestione la FK
         ciudad.setRegion(region);
-        return ciudadRepository.save(ciudad);
+        return toDTO(ciudadRepository.save(ciudad));
     }
 
-    //* Actualiza los datos de una ciudad existente
+    //* Actualiza los datos de una ciudad y retorna el DTO de respuesta
     //? id_ciudad viene del path de la URL, no del body del request
-    //? save() detecta que el ID ya existe en la BD y ejecuta UPDATE en lugar de INSERT
-    public Ciudad actualizarCiudad(int id_ciudad, ActualizarCiudad actCiudad) {
+    public CiudadDTO actualizarCiudad(int id_ciudad, ActualizarCiudad actCiudad) {
         Ciudad ciudad = ciudadRepository.findById(id_ciudad)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ciudad no encontrada."));
         Region region = regionRepository.findById(actCiudad.getId_region())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Región no encontrada."));
         ciudad.setNombre_ciudad(actCiudad.getNombre_ciudad());
         ciudad.setRegion(region);
-        return ciudadRepository.save(ciudad);
+        return toDTO(ciudadRepository.save(ciudad));
     }
 
     //* Elimina una ciudad por su ID

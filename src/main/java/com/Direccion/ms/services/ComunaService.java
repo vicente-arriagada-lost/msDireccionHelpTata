@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.Direccion.ms.models.dto.ComunaDTO;
 import com.Direccion.ms.models.entities.Ciudad;
 import com.Direccion.ms.models.entities.Comuna;
 import com.Direccion.ms.models.request.ActualizarComuna;
@@ -27,47 +28,59 @@ public class ComunaService {
     @Autowired
     private CiudadRepository ciudadRepository;
 
-    //* Retorna la lista completa de comunas registradas en la BD
-    public List<Comuna> obtenerTodasLasComunas() {
-        return comunaRepository.findAll();
+    //* Convierte una entidad Comuna a su DTO de respuesta
+    // En vez de incluir el objeto Ciudad completo, solo se expone su ID (id_ciudad)
+    private ComunaDTO toDTO(Comuna c) {
+        return new ComunaDTO(c.getId_comuna(), c.getNombre_comuna(), c.getCiudad().getId_ciudad());
     }
 
-    //* Retorna todas las comunas que pertenecen a una ciudad dada
+    //* Retorna la lista completa de comunas como DTOs
+    public List<ComunaDTO> obtenerTodasLasComunas() {
+        return comunaRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    //* Retorna todas las comunas que pertenecen a una ciudad dada como DTOs
     //? Útil para poblar selects en cascada: al seleccionar una ciudad, se cargan sus comunas
-    public List<Comuna> obtenerComunasPorCiudad(int idCiudad) {
-        return comunaRepository.findByCiudad_IdCiudad(idCiudad);
+    public List<ComunaDTO> obtenerComunasPorCiudad(int idCiudad) {
+        return comunaRepository.findByCiudad_IdCiudad(idCiudad)
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
-    //* Busca una comuna por su ID
+    //* Busca una comuna por su ID y retorna el DTO
     //! Lanza HTTP 404 si el ID no existe en la BD
-    public Comuna obtenerComunaPorId(int id_comuna) {
-        return comunaRepository.findById(id_comuna)
+    public ComunaDTO obtenerComunaPorId(int id_comuna) {
+        Comuna comuna = comunaRepository.findById(id_comuna)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comuna no encontrada."));
+        return toDTO(comuna);
     }
 
-    //* Crea una nueva comuna a partir del DTO y la persiste en la BD
+    //* Crea una nueva comuna y retorna el DTO de respuesta
     //! Lanza HTTP 404 si la ciudad referenciada (id_ciudad) no existe — integridad garantizada
-    public Comuna agregarComuna(AgregarComuna nuevaComuna) {
+    public ComunaDTO agregarComuna(AgregarComuna nuevaComuna) {
         Ciudad ciudad = ciudadRepository.findById(nuevaComuna.getId_ciudad())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ciudad no encontrada."));
         Comuna comuna = new Comuna();
         comuna.setNombre_comuna(nuevaComuna.getNombre_comuna());
         //* Se asigna el objeto Ciudad completo para que JPA gestione la FK
         comuna.setCiudad(ciudad);
-        return comunaRepository.save(comuna);
+        return toDTO(comunaRepository.save(comuna));
     }
 
-    //* Actualiza los datos de una comuna existente
+    //* Actualiza los datos de una comuna y retorna el DTO de respuesta
     //? id_comuna viene del path de la URL, no del body del request
-    //? save() detecta que el ID ya existe en la BD y ejecuta UPDATE en lugar de INSERT
-    public Comuna actualizarComuna(int id_comuna, ActualizarComuna actComuna) {
+    public ComunaDTO actualizarComuna(int id_comuna, ActualizarComuna actComuna) {
         Comuna comuna = comunaRepository.findById(id_comuna)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comuna no encontrada."));
         Ciudad ciudad = ciudadRepository.findById(actComuna.getId_ciudad())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ciudad no encontrada."));
         comuna.setNombre_comuna(actComuna.getNombre_comuna());
         comuna.setCiudad(ciudad);
-        return comunaRepository.save(comuna);
+        return toDTO(comunaRepository.save(comuna));
     }
 
     //* Elimina una comuna por su ID

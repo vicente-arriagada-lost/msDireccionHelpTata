@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.Direccion.ms.models.entities.Comuna;
+import com.Direccion.ms.models.dto.ComunaDTO;
 import com.Direccion.ms.models.request.ActualizarComuna;
 import com.Direccion.ms.models.request.AgregarComuna;
 import com.Direccion.ms.services.ComunaService;
@@ -25,41 +25,41 @@ public class ComunaController {
     @Autowired
     private ComunaService comunaService;
 
-    //* GET /api/comunas — retorna todas las comunas
+    //* GET /api/comunas — retorna todas las comunas como ComunaDTO (con id_ciudad en vez del objeto Ciudad)
     @GetMapping
-    public ResponseEntity<List<Comuna>> obtenerTodas() {
+    public ResponseEntity<List<ComunaDTO>> obtenerTodas() {
         return ResponseEntity.ok(comunaService.obtenerTodasLasComunas());
     }
 
-    //* GET /api/comunas/{id} — retorna una comuna por su ID
+    //* GET /api/comunas/{id} — retorna una comuna por su ID como ComunaDTO
     //? @PathVariable extrae el valor {id} de la URL
     @GetMapping("/{id}")
-    public ResponseEntity<Comuna> obtenerPorId(@PathVariable int id) {
+    public ResponseEntity<ComunaDTO> obtenerPorId(@PathVariable int id) {
         return ResponseEntity.ok(comunaService.obtenerComunaPorId(id));
     }
 
-    //* GET /api/comunas/ciudad/{idCiudad} — retorna todas las comunas de una ciudad
-    //? Endpoint en cascada: útil para poblar un select de comunas al elegir una ciudad en el frontend
+    //* GET /api/comunas/ciudad/{idCiudad} — retorna todas las comunas de una ciudad como DTOs
+    //? Endpoint en cascada: útil para poblar un select de comunas al elegir una ciudad
     @GetMapping("/ciudad/{idCiudad}")
-    public ResponseEntity<List<Comuna>> obtenerPorCiudad(@PathVariable int idCiudad) {
+    public ResponseEntity<List<ComunaDTO>> obtenerPorCiudad(@PathVariable int idCiudad) {
         return ResponseEntity.ok(comunaService.obtenerComunasPorCiudad(idCiudad));
     }
 
-    //* POST /api/comunas — crea una nueva comuna
-    //? @Valid activa las validaciones del DTO (ej: @NotBlank, @Positive)
+    //* POST /api/comunas — crea una nueva comuna y retorna el ComunaDTO creado
+    //? @Valid activa las validaciones del DTO de entrada (ej: @NotBlank, @Positive)
     //? @RequestBody deserializa el JSON del request al DTO
     //! Responde con HTTP 201 Created en lugar del 200 por defecto
     @PostMapping
-    public ResponseEntity<Comuna> agregar(@Valid @RequestBody AgregarComuna nuevaComuna) {
+    public ResponseEntity<ComunaDTO> agregar(@Valid @RequestBody AgregarComuna nuevaComuna) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(comunaService.agregarComuna(nuevaComuna));
     }
 
-    //* PUT /api/comunas/{id} — actualiza los datos de una comuna existente
+    //* PUT /api/comunas/{id} — actualiza los datos de una comuna y retorna el ComunaDTO
     //? El ID viene en el path y los nuevos datos vienen en el body
     @PutMapping("/{id}")
-    public ResponseEntity<Comuna> actualizar(@PathVariable int id,
-                                             @Valid @RequestBody ActualizarComuna actComuna) {
+    public ResponseEntity<ComunaDTO> actualizar(@PathVariable int id,
+                                                @Valid @RequestBody ActualizarComuna actComuna) {
         return ResponseEntity.ok(comunaService.actualizarComuna(id, actComuna));
     }
 
